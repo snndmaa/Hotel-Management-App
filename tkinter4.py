@@ -3,6 +3,9 @@ import tkinter.messagebox
 import datetime
 from pickle import *
 from pymongo import MongoClient
+import pandas as pd
+from pandastable import Table
+
 
 client = MongoClient('localhost', 27017)
 thedb = client['hoteldb']
@@ -11,14 +14,16 @@ dblist = client.list_database_names()
 print('DB Names: ', dblist)
 
 root = Tk()
+root.configure(background='lightblue')
 root.title('Hotel Havana Accounting Softare')
 root.geometry('1500x900')
 
-Topic = Label(root, text='Select an Option to get Started')
-Topic.pack(padx=12, pady=12)
+Topic = Label(root, text='Select an Option to get Started', font=('Arial', 35))
+Topic.pack(fill=X, pady=150)
 
 def reserve():
     newWindow = tkinter.Toplevel(root)
+    newWindow.configure(background='lightblue')
     newWindow.title('Reservation Handler')
     newWindow.geometry('1110x600')
 
@@ -70,13 +75,19 @@ def reserve():
         print('End Storage Func')
         
 
-    def d_format(e, d):
+    def d_format(e1, d, e2):
         try:
-            date_obj = datetime.datetime.strptime(e, d)
+            date_obj = datetime.datetime.strptime(e1, d)
             print(date_obj)
         except ValueError:
             tkinter.messagebox.showerror(title='Date Error', message='Incorrect data format, should be DD/MM/YYY')        
     
+        try:
+            date_obj = datetime.datetime.strptime(e2, d)
+            print(date_obj)
+        except ValueError:
+            tkinter.messagebox.showerror(title='Date Error', message='Incorrect data format, should be DD/MM/YYY') 
+
 
     def submit():
         i = 0
@@ -90,15 +101,16 @@ def reserve():
         gentry = {'Full Name: ': gentry1, 'Arrival Date: ': gentry2, 'Departure Date: ': gentry5, 'Phone Number: ': gentry3, 'Room Number/Price: ': gentry6, 'Staff Name: ': gentry7, 'Auto_Date': res_d, 'Auto_Time': res_t}
         date_format = '%d/%m/%Y'
         
-        d_format(gentry2, date_format)
+        d_format(gentry2, date_format, gentry5)
 
         if(gentry1 == '' or gentry2 == '' or gentry3 == '' or gentry5 == '' or gentry6 == '' or gentry7 == ''):
             mes1 = tkinter.messagebox.showerror(title='Empty Entry', message='Please ensure all form fields are filled in order to successfully book a reservation.')
             mes1.pack()
-        elif(gentry2 == gentry5 or type(gentry1) == int ):
+        elif(gentry2 == gentry5 or type(gentry1) == int or len(gentry3) != 11 or type(gentry7) == int):
             mes2 = tkinter.messagebox.showerror(title='Your Entry contains the Following Errors:', message='- Departure and Arrival Dates cannot be the same''\n'
             '- Name cannot contain a Number.''\n'
-            '- ')
+            '- Date Must be written in Correct Format.''\n'
+            '- Phone Number must be 11 DIGITS')
             mes2.pack()
 
         else:
@@ -108,35 +120,41 @@ def reserve():
         
         # print(res_t[1])
 
-    but4 = Button(newFrame, text='Submit Confirmation', command=submit)
+    but4 = Button(newFrame, text='Submit Confirmation', command=submit, activebackground='lightgreen', width=40)
     but4.pack(pady=10)
 
     newFrame.pack()
 
 
-but1 = Button(root, text='Make a Reservation', command=reserve)
+but1 = Button(root, text='Make a Reservation', command=reserve, activebackground='orangered', width=40)
 but1.pack()
 
 
 def record():
-    with open('C://Users/USER/Desktop/freelance/py/tkinter/dbfile.txt', 'r') as dict_items_open:
-        BDICT = dict_items_open
-        firstrunDICT = False
-        print(BDICT)
-        print('End of Record func!')
+    inventory_data = [data for data in newcol.find({}, {'_id':0})]
+    df_inventory_data = pd.DataFrame(inventory_data)
+    
+    rec_window = tkinter.Toplevel(root)
+    rec_window.title('Guest Database')
+    rec_window.geometry('1110x600')
+
+    pt = Table(rec_window, dataframe=df_inventory_data)
+    pt.show()
+
+    print('End of Record func!')
 
 
-but2 = Button(root, text='View Guest Records', command=record)
+but2 = Button(root, text='View Guest Records', command=record, activebackground='orangered', width=40)
 but2.pack()
 
-but3 = Button(root, text='Finances')
+but3 = Button(root, text='Finance Management', activebackground='orangered', width=40)
 but3.pack()
 
 def cleardb():
     delcol = newcol.delete_many({}) 
     print(delcol.deleted_count, " documents deleted.")
 
-but5 = Button(root, text='Clear Database', command=cleardb)
+but5 = Button(root, text='Clear Database', command=cleardb, activebackground='orangered', width=40)
 but5.pack()
 
 
