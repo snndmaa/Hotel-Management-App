@@ -1,19 +1,29 @@
 from tkinter import *
-import tkinter
+import tkinter.messagebox
 import datetime
-import pickle
 from pickle import *
+from pymongo import MongoClient
+import pandas as pd
+from pandastable import Table
 
+
+client = MongoClient('localhost', 27017)
+thedb = client['hoteldb']
+newcol = thedb['guests']
+dblist = client.list_database_names()
+print('DB Names: ', dblist)
 
 root = Tk()
+root.configure(background='lightblue')
 root.title('Hotel Havana Accounting Softare')
 root.geometry('1500x900')
 
-Topic = Label(root, text='Select an Option to get Started')
-Topic.pack(padx=12, pady=12)
+Topic = Label(root, text='Select an Option to get Started', font=('Arial', 35))
+Topic.pack(fill=X, pady=150)
 
 def reserve():
     newWindow = tkinter.Toplevel(root)
+    newWindow.configure(background='lightblue')
     newWindow.title('Reservation Handler')
     newWindow.geometry('1110x600')
 
@@ -24,7 +34,7 @@ def reserve():
 
     
     entry1 = Entry(newFrame, textvariable=StringVar, width='30', bg='lightyellow', cursor='dot')
-    nom = Label(newFrame, text='Full Name', font=('Arial', 20))
+    nom = Label(newFrame, text=' Full Name', font=('Arial', 20))
     nom.pack()
     entry1.pack()
 
@@ -54,28 +64,26 @@ def reserve():
     entry7.pack()
 
     res_dt = datetime.datetime.now()
-    res_d = [res_dt.day, res_dt.month, res_dt.year]
-    res_t = [res_dt.hour, res_dt.minute, res_dt.second]
+    res_d = str(res_dt.day)+'/'+ str(res_dt.month)+'/'+ str(res_dt.year)
+    res_t = str(res_dt.hour)+':'+ str(res_dt.minute)
 
     def storage(dict): 
-        picdic = {}
-        dbfile = open('C://Users/USER/Desktop/freelance/py/tkinter/dbfile.txt', 'r')
-        counter = 0 
-        rdbfile = dbfile.read()
-        nline = rdbfile.split('\n')
-        print('lenline:',len(nline))
-        for i in nline:
-            if i:
-                counter += 1
-        
-        # print(dict,counter+1)
+        insert_db = newcol.insert_one(dict)
+        see_db = newcol.find()
 
-        
-
-        print(nline[counter-1], counter)
+        print(see_db)
         print('End Storage Func')
         
-        
+
+    def d_format(e1, d, e2):
+        try:
+            date_obj = datetime.datetime.strptime(e1, d)
+            date_obj2 = datetime.datetime.strptime(e2, d)
+            print(date_obj2)
+            print(date_obj)
+        except ValueError:
+            tkinter.messagebox.showerror(title='Date Error', message='Incorrect data format, should be DD/MM/YYY')        
+
 
     def submit():
         i = 0
@@ -86,33 +94,106 @@ def reserve():
         gentry3 = entry3.get()
         gentry6 = entry6.get()
         gentry7 = entry7.get()
-        gentry = [gentry1,gentry2,gentry5,gentry3,gentry6,gentry7,res_d,res_t]
+        gentry = {'Full Name: ': gentry1, 'Arrival Date: ': gentry2, 'Departure Date: ': gentry5, 'Phone Number: ': gentry3, 'Room Number/Price: ': gentry6, 'Staff Name: ': gentry7, 'Auto_Date': res_d, 'Auto_Time': res_t}
+        date_format = '%d/%m/%Y'
+        
+        d_format(gentry2, date_format, gentry5)
 
-        y = []
-        dict = {
-            i : y + gentry
-        }
+        if(gentry1 == '' or gentry2 == '' or gentry3 == '' or gentry5 == '' or gentry6 == '' or gentry7 == ''):
+            mes1 = tkinter.messagebox.showerror(title='Empty Entry', message='Please ensure all form fields are filled in order to successfully book a reservation.')
+            mes1.pack()
+        elif(gentry2 == gentry5 or type(gentry1) == int or len(gentry3) != 11 or type(gentry7) == int):
+            mes2 = tkinter.messagebox.showerror(title='Your Entry contains the Following Errors:', message='- Departure and Arrival Dates cannot be the same''\n'
+            '- Name cannot contain a Number.''\n'
+            '- Date Must be written in Correct Format.''\n'
+            '- Phone Number must be 11 DIGITS')
+            mes2.pack()
 
-        storage(gentry)
+        else:
+            if tkinter.messagebox.askokcancel('Confirmation', 'Do you wish to Submit'):
+                storage(gentry)
+                newWindow.destroy()
+            else:
+                print('Fuck Storing')
 
-        print(dict)
+
+        
         # print(res_t[1])
 
-    but4 = Button(newFrame, text='Submit Confirmation', command=submit)
+    but4 = Button(newFrame, text='Submit Confirmation', command=submit, activebackground='lightgreen', width=40)
     but4.pack(pady=10)
 
     newFrame.pack()
 
 
-but1 = Button(root, text='Make a Reservation', command=reserve)
+but1 = Button(root, text='Make a Reservation', command=reserve, activebackground='orangered', width=40)
 but1.pack()
 
 
-but2 = Button(root, text='View Guest Records')
+def record():
+    inventory_data = [data for data in newcol.find({}, {'_id':0})]
+    df_inventory_data = pd.DataFrame(inventory_data)
+    
+    rec_window = tkinter.Toplevel(root)
+    rec_window.title('Guest Database')
+    rec_window.geometry('1110x600')
+
+    pt = Table(rec_window, dataframe=df_inventory_data)
+    pt.show()
+
+    print('End of Record func!')
+
+
+but2 = Button(root, text='View Guest Records', command=record, activebackground='orangered', width=40)
 but2.pack()
 
-but3 = Button(root, text='Finances')
+but3 = Button(root, text='Finance Management', activebackground='orangered', width=40)
 but3.pack()
+
+
+def cleardb():
+    newWindow = tkinter.Toplevel(root)
+    newWindow.configure(background='lightblue')
+    newWindow.title('Admin Confirmation')
+    newWindow.geometry('670x250')
+
+    newFrame = Frame(newWindow)
+
+
+    info = Label(newFrame, text='Please Enter Admin Password to perform this action.', font=('Arial', 15))
+    entry8 = Entry(newFrame, textvariable=StringVar, width='50', bg='lightyellow', cursor='dot')
+
+
+    info.pack(pady=40)
+    entry8.pack()
+
+
+    
+
+    
+    # delcol = newcol.delete_many({}) 
+    # print(delcol.deleted_count, " documents deleted.")
+
+    def pasval():
+        gentry8 = entry8.get()
+        if(gentry8 == 'havana01'):
+            delcol = newcol.delete_many({})
+            delnum = delcol.deleted_count
+            tkinter.messagebox.showinfo(title='Password Correct', message='DataBase has been cleared of '+ str(delnum)+ ' Entries')
+            newWindow.destroy()
+
+        else:
+            tkinter.messagebox.showwarning(title='Incorrect Password', message='Please desist from trying if you are not Admin')
+            newWindow.destroy()
+
+    but6 = Button(newFrame, text='Confirm', command=pasval, activebackground='orangered', width=40)
+    but6.pack()
+
+    newFrame.pack()
+
+
+but5 = Button(root, text='Clear Database', command=cleardb, activebackground='orangered', width=40)
+but5.pack()
 
 
 # a = ("John", "Charles", "Mike")
@@ -124,5 +205,6 @@ but3.pack()
 
 # print(tuple(x))
 # print(dict(zip(x)))
+
 
 root.mainloop()
